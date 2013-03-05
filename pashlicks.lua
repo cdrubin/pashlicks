@@ -109,7 +109,7 @@ function render_tree( source, destination, indent )
   local whitespace = ' '
 
   for file in lfs.dir( source ) do
-    if file ~= "." and file ~= ".." and file:sub( 1, 1 ) ~= '_' and file ~= arg[0] then
+    if file:sub( 1, 1 ) ~= '_' and file:sub( 1, 1) ~= '.' and file ~= arg[0] then
       --local result = {}
       local attr = lfs.attributes( source..'/'..file )
       assert(type(attr) == "table")
@@ -183,18 +183,16 @@ end
 
 --nuts = 999
 
-local source = arg[1] or nil
-local destination = arg[2] or nil
+local destination = arg[1] or nil
 
-if ( #arg ~= 2 ) then
-  print( 'Usage: '..arg[0]..' <source> <destination>' )
+if ( #arg ~= 1 ) then
+  print( 'Usage: lua '..arg[0]..' <destination>' )
 else
-  local source_attr = lfs.attributes( source )
   local destination_attr = lfs.attributes( destination )
-  if type( source_attr ) ~= 'table' or source_attr.mode ~= 'directory' or type( destination_attr ) ~= 'table' or destination_attr.mode ~= 'directory' then
-    print( '<source> and <destination> need to be existing directories' )
+  if type( destination_attr ) ~= 'table' or destination_attr.mode ~= 'directory' then
+    print( '<destination> needs to be an existing directory' )
   else
-    render_tree( source, destination )
+    render_tree( '.', destination )
   end
 end
 
