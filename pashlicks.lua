@@ -49,9 +49,11 @@ function pashlicks.compile( tmpl, name )
 
   code = table.concat( code, '\n' )
 
-  local func = pashlicks.load_string( code )
+  local func, err = load( code )
+  if err then assert( func, err ) end
 
   return function( context )
+    --print( context.something_from_site )
     assert( context, "You must always pass in a table for context." )
     setmetatable( context, { __index = _G } )
     load( func, nil, nil, context )
@@ -75,21 +77,26 @@ function pashlicks.load_file( name )
   return content
 end
 
--- Helper function that uses load to check code and return a lua function for the environment
+-- Helper function that uses load to check code and if okay return the environment it creates
 function pashlicks.load_string( code )
-  local func, err = load( code )
+  local context = {}
+  local func, err = load( code, 'load_string', 't', context )
 
   if err then
     assert( func, err )
+  else
+    func()
   end
 
-  return func
+  return func, context
 end
 
 
 function pashlicks.render_tree( source, destination, indent, context )
   indent = indent or 0
   context = context or {}
+
+  print( context.something_from_site )
 
   local whitespace = ' '
 
@@ -109,7 +116,7 @@ function pashlicks.render_tree( source, destination, indent, context )
         if ( destination_attr == nil ) then
           lfs.mkdir( destination..'/'..file)
         end
-        pashlicks.render_tree( source..'/'..file, destination..'/'..file, indent + 2 )
+        pashlicks.render_tree( source..'/'..file, destination..'/'..file, indent + 2, context )
       end
     end
   end
@@ -130,11 +137,13 @@ else
     print( '<destination> needs to be an existing directory' )
   else
     if lfs.attributes( '_site.lua') ~= nil then
+      _, pashlicks.context = pashlicks.load_string( io.lines( '_site.lua', 2^12) )
+      print ( pashlicks.context.something_from_site )
       --require( '_site.lua' )
       --load(io.lines( '_site.lua', 2^12), '_site.lua', 't', pashlicks.context ) --( pashlicks.load_string( pashlicks.load_file( '_site.lua' ) ) )()
       --print( )
     else
-      pashlicks.content = {}
+      pashlicks.context = {}
     end
     pashlicks.render_tree( '.', pashlicks.destination, 0, pashlicks.context )
   end
