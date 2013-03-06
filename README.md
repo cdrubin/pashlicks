@@ -27,7 +27,10 @@ She understands three kinds of tags inside source files :
   {( "menu.html" )}
 ```
 
-I usually use something like :
+She could certainly process any filetype but I usually have her 
+chew on HTML template files.
+
+With usage something like :
 
 ``` bash
 lua pashlicks.lau _output
