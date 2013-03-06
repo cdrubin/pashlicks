@@ -27,7 +27,7 @@ She understands three kinds of tags inside source files :
   {( "menu.html" )}
 ```
 
-She could certainly process any filetype but I usually have her 
+She could certainly process any filetype but we usually have her 
 chew on HTML template files.
 
 With usage something like :
