@@ -2,10 +2,10 @@
 
 --   templating features thanks to Zed Shaw's tir
 
-
 local lfs = require( 'lfs' )
 
-pashlicks = {}
+pashlicks = { context = {} }
+setmetatable( pashlicks.context, { __index = _G } )
 
 pashlicks.TEMPLATE_ACTIONS = {
   ['{%'] = function(code)
@@ -15,21 +15,14 @@ pashlicks.TEMPLATE_ACTIONS = {
     return ('_result[#_result+1] = %s'):format(code)
   end,
   ['{('] = function(code)
-    return ( [[
-if not _children[%s] then
-_children[%s] = pashlicks.render( %s )
-end
-
-_result[#_result+1] = _children[%s]( {} )
-]] ):format( code, code, code, code )
+    return ( '_result[#_result+1] = pashlicks.render( pashlicks.load_file( %s ), _ENV )'):format( code )
   end
 }
 
 
-
-function pashlicks.compile( tmpl, name )
-  local tmpl = tmpl .. '{}'
-  local code = {'local _result, _children = {}, {}\n'}
+function pashlicks.render( code, context )
+  local tmpl = code..'{}'
+  local code = {'local _result = {}\n'}
 
   for text, block in string.gmatch( tmpl, "([^{]-)(%b{})" ) do
     local act = pashlicks.TEMPLATE_ACTIONS[block:sub( 1, 2 )]
@@ -49,46 +42,28 @@ function pashlicks.compile( tmpl, name )
 
   code = table.concat( code, '\n' )
 
-  local func, err = load( code )
-  if err then assert( func, err ) end
-
-  return function( context )
-    --print( context.something_from_site )
-    assert( context, "You must always pass in a table for context." )
-    setmetatable( context, { __index = _G } )
-    load( func, nil, nil, context )
-    --setfenv( func, context )
-    return func()
-  end
+  return pashlicks.run_code( code, context )
 end
 
-
-function pashlicks.render( name )
-  local tempf = pashlicks.load_file( name )
-  return pashlicks.compile( tempf, name )
-end
-
--- Helper function that loads a file into ram.
-function pashlicks.load_file( name )
-  local intmp = assert(io.open( name, 'r'))
-  local content = intmp:read('*a')
-  intmp:close()
-
-  return content
-end
 
 -- Helper function that uses load to check code and if okay return the environment it creates
-function pashlicks.load_code( code, context )
-  context = context or {}
-  local func, err = load( code, 'load_string', 't', context )
+function pashlicks.run_code( code, context )
+
+  local func, err = load( code, nil, 't', context )
 
   if err then
     assert( func, err )
   else
-    func()
+    return func(), context
   end
+end
 
-  return func, context
+
+function pashlicks.load_file( name )
+  local intmp = assert( io.open( name, 'r' ) )
+  local content = intmp:read( '*a' )
+  intmp:close()
+  return content
 end
 
 
@@ -96,9 +71,11 @@ function pashlicks.render_tree( source, destination, indent, context )
   indent = indent or 0
   context = context or {}
 
-  print( context.something_from_site )
-
   local whitespace = ' '
+
+  -- check for 'subdir/_dir.lua' and add to context if it exists
+  file = io.open( source..'/_dir.lua', 'r' )
+  if file then _, context = pashlicks.run_code( pashlicks.load_file( source..'/_dir.lua' ), context ) end
 
   for file in lfs.dir( source ) do
     if file:sub( 1, 1 ) ~= '_' and file:sub( 1, 1) ~= '.' and file ~= arg[0] then
@@ -107,16 +84,17 @@ function pashlicks.render_tree( source, destination, indent, context )
       if attr.mode == "file" then
         print( whitespace:rep( indent )..file )
         -- render and write it out
-        local output = io.open( destination..'/'..file, "w" )
-        output:write( pashlicks.render( source..'/'..file )( context ) )
-        output:close()
+        local outfile = io.open( destination..'/'..file, "w" )
+        local output = pashlicks.render( pashlicks.load_file( source..'/'..file ), context )
+        outfile:write( output )
+        outfile:close()
       elseif attr.mode == "directory" then
         print( whitespace:rep( indent )..file..'/    -->    '..destination..'/'..file )
         destination_attr = lfs.attributes( destination..'/'..file )
         if ( destination_attr == nil ) then
           lfs.mkdir( destination..'/'..file)
         end
-        pashlicks.render_tree( source..'/'..file, destination..'/'..file, indent + 2, context )
+        pashlicks.render_tree( source..'/'..file, destination..'/'..file, indent + 2, pashlicks.copy( context ) )
       end
     end
   end
@@ -124,7 +102,21 @@ function pashlicks.render_tree( source, destination, indent, context )
 end
 
 
-
+function pashlicks.copy( original )
+  local original_type = type( original )
+  local copy
+  if original_type == 'table' then
+    copy = {}
+    for original_key, original_value in next, original, nil do
+      copy[pashlicks.copy( original_key ) ] = pashlicks.copy( original_value )
+    end
+    -- use the same metatable (do not copy that too)
+    setmetatable( copy, getmetatable( original ) )
+  else -- number, string, boolean, etc
+    copy = original
+  end
+  return copy
+end
 
 
 pashlicks.destination = arg[1] or nil
@@ -136,18 +128,6 @@ else
   if type( destination_attr ) ~= 'table' or destination_attr.mode ~= 'directory' then
     print( '<destination> needs to be an existing directory' )
   else
-    if lfs.attributes( '_site.lua') ~= nil then
-      _, pashlicks.context = pashlicks.load_string( io.lines( '_site.lua', 2^12) )
-      print ( pashlicks.context.something_from_site )
-      --require( '_site.lua' )
-      --load(io.lines( '_site.lua', 2^12), '_site.lua', 't', pashlicks.context ) --( pashlicks.load_string( pashlicks.load_file( '_site.lua' ) ) )()
-      --print( )
-    else
-      pashlicks.context = {}
-    end
     pashlicks.render_tree( '.', pashlicks.destination, 0, pashlicks.context )
   end
 end
-
-
-
