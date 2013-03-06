@@ -67,8 +67,8 @@ function pashlicks.load_file( name )
 end
 
 
-function pashlicks.render_tree( source, destination, indent, context )
-  indent = indent or 0
+function pashlicks.render_tree( source, destination, level, context )
+  level = level or 0
   context = context or {}
 
   local whitespace = ' '
@@ -82,7 +82,8 @@ function pashlicks.render_tree( source, destination, indent, context )
       local attr = lfs.attributes( source..'/'..file )
       assert(type(attr) == "table")
       if attr.mode == "file" then
-        print( whitespace:rep( indent )..file )
+        print( whitespace:rep( level * 2 )..file )
+        context.page = { level = level }
         -- render and write it out
         local outfile = io.open( destination..'/'..file, "w" )
         local output = pashlicks.render( pashlicks.load_file( source..'/'..file ), context )
@@ -94,7 +95,7 @@ function pashlicks.render_tree( source, destination, indent, context )
         if ( destination_attr == nil ) then
           lfs.mkdir( destination..'/'..file)
         end
-        pashlicks.render_tree( source..'/'..file, destination..'/'..file, indent + 2, pashlicks.copy( context ) )
+        pashlicks.render_tree( source..'/'..file, destination..'/'..file, level + 1, pashlicks.copy( context ) )
       end
     end
   end
