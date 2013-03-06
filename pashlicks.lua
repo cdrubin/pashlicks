@@ -86,7 +86,8 @@ function pashlicks.render_tree( source, destination, level, context )
 
         -- setup file specific page values
         context.page = context.page or {}
-        context.page = { level = level, path = source..'/'..file }
+        context.page.level = level
+        context.page.path = source..'/'..file
 
         -- check for (and render) page parts
         local rendered_page_parts = {}
@@ -101,14 +102,16 @@ function pashlicks.render_tree( source, destination, level, context )
         end
         context.page.parts = rendered_page_parts
 
-
-        -- render and write it out
+        -- render and write out page
         local outfile = io.open( destination..'/'..file, "w" )
-        --if context.page.layout then
-          local output = pashlicks.render( pashlicks.load_file( source..'/'..file ), context )
-        --else
-          --local output = pashlicks.render( pashlicks.load_file( source..'/'..file ), context )
-        --end
+        local output = pashlicks.render( pashlicks.load_file( source..'/'..file ), context )
+
+        -- embed in a layout if one was specified
+        if context.page.layout then
+          context.page.content = output
+          output = pashlicks.render( pashlicks.load_file( context.page.layout ), context )
+        end
+
         outfile:write( output )
         outfile:close()
       elseif attr.mode == "directory" then
