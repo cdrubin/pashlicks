@@ -78,8 +78,8 @@ function pashlicks.load_file( name )
 end
 
 -- Helper function that uses load to check code and if okay return the environment it creates
-function pashlicks.load_string( code )
-  local context = {}
+function pashlicks.load_code( code, context )
+  context = context or {}
   local func, err = load( code, 'load_string', 't', context )
 
   if err then
