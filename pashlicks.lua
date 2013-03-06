@@ -83,14 +83,36 @@ function pashlicks.render_tree( source, destination, level, context )
       assert(type(attr) == "table")
       if attr.mode == "file" then
         print( whitespace:rep( level * 2 )..file )
-        context.page = { level = level }
+
+        -- setup file specific page values
+        context.page = context.page or {}
+        context.page = { level = level, path = source..'/'..file }
+
+        -- check for (and render) page parts
+        local rendered_page_parts = {}
+        local page_part_identifier = '__'..file:match( '[%a%d-_]+'..'.' )
+        for page_part in lfs.dir( source ) do
+          if page_part:find( page_part_identifier ) == 1 then
+            local page_part_name = page_part:sub( page_part_identifier:len() + 1 )
+            print( whitespace:rep( level * 2 )..'('..page_part_name..')' )
+            local rendered_page_parts = {}
+            rendered_page_parts[page_part_name] = pashlicks.render( pashlicks.load_file( source..'/'..page_part ), pashlicks.copy( context ) )
+          end
+        end
+        context.page.parts = rendered_page_parts
+
+
         -- render and write it out
         local outfile = io.open( destination..'/'..file, "w" )
-        local output = pashlicks.render( pashlicks.load_file( source..'/'..file ), context )
+        --if context.page.layout then
+          local output = pashlicks.render( pashlicks.load_file( source..'/'..file ), context )
+        --else
+          --local output = pashlicks.render( pashlicks.load_file( source..'/'..file ), context )
+        --end
         outfile:write( output )
         outfile:close()
       elseif attr.mode == "directory" then
-        print( whitespace:rep( indent )..file..'/    -->    '..destination..'/'..file )
+        print( whitespace:rep( level * 2 )..file..'/' )
         destination_attr = lfs.attributes( destination..'/'..file )
         if ( destination_attr == nil ) then
           lfs.mkdir( destination..'/'..file)
