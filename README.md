@@ -1,8 +1,9 @@
 Pashlicks
 =========
 
-Pashlicks expects to be at the foot (root) of your site. She adds `_dir.lua`
-to the environment of the underlying files of a directory.
+Pashlicks expects to be at the foot (root) of your site. She adds 
+the execution of `_dir.lua` to the environment of the contents of
+a directory.
 
 Files and directories that begin with `_` or `.` are ignored.
 
@@ -30,7 +31,82 @@ She understands three kinds of tags inside source files :
 She could certainly process any filetype but we usually have her 
 chew on HTML template files.
 
-With usage something like :
+A common need when using Pashlicks as a static site generator 
+is the use of a _layout_ or _template_ inside which to embed the 
+content of a page. Specifying a layout can be done in a `_dir.lua`
+file so that all pages in that directory and inner directories use
+a particular layout. Specifying the layout template can of course 
+also be done inside the page itself.
+
+```lua
+--- if page table already exists
+page.layout = '_layouts/site.html'
+```
+be careful when doing something like the following :
+```lua
+page = { layout = '_layouts/site.html' }
+```
+because you might be clobbering the page table created elsewhere.
+Something like this might be more appropriate :
+```lua
+page = page or {}
+page.layout = '_layouts/site.html'
+```
+
+When specifying a layout the page is rendered to the variable `page.content`.
+
+So with a layout like this :
+
+```
+_dir.lua
+_layouts/
+  site.html
+_snippets/
+  menu.html
+index.html
+pashlicks.lua
+```
+
+we could have :
+```
+--- _dir.lua
+page = { layout = '_layouts/site.html' }
+
+
+--- _layouts/site.html
+<html>
+<head>
+  <title>{{ page.title }}</title>
+</head>
+<body>
+  {{ page.content }}
+</body>
+</html>
+
+
+--- index.html
+{% page.title = 'The truth about Pashlicks' %}
+
+Pashlicks loves her sisters Josie and Marmite
+```
+
+to produce an index.html file containing :
+```html
+<html>
+<head>
+  <title>The truth about Pashlicks</title>
+</head>
+<body>
+
+Pashlicks loves her sisters Josie and Marmite
+</body>
+</html>
+
+```
+
+
+
+Calling Pashlicks should be as simple as :
 
 ``` bash
 lua pashlicks.lau _output
