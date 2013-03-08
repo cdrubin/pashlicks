@@ -66,7 +66,8 @@ function pashlicks.load_file( name )
 end
 
 
-function pashlicks.render_tree( source, destination, level, context )
+-- silent will not write files or print anything
+function pashlicks.render_tree( source, destination, level, context, silent )
   level = level or 0
   context = context or {}
 
@@ -97,10 +98,10 @@ function pashlicks.render_tree( source, destination, level, context )
   for count, directory in ipairs( directories ) do
     print( whitespace:rep( level * 2 )..directory..'/' )
     destination_attr = lfs.attributes( destination..'/'..directory )
-    if ( destination_attr == nil ) then
+    if ( destination_attr == nil and not silent ) then
       lfs.mkdir( destination..'/'..directory )
     end
-    local subtree = pashlicks.render_tree( source..'/'..directory, destination..'/'..directory, level + 1, pashlicks.copy( context ) )
+    local subtree = pashlicks.render_tree( source..'/'..directory, destination..'/'..directory, level + 1, pashlicks.copy( context ), silent )
 
     tree[directory] = subtree
 
@@ -110,7 +111,7 @@ function pashlicks.render_tree( source, destination, level, context )
   --local visible_pages = {}
   -- process files now that search has already processed any children
   for count, file in ipairs( files ) do
-    print( whitespace:rep( level * 2 )..file )
+    if not silent then print( whitespace:rep( level * 2 )..file ) end
 
     -- setup file specific page values
     context.page = context.page or {}
@@ -125,7 +126,7 @@ function pashlicks.render_tree( source, destination, level, context )
     for page_part in lfs.dir( source ) do
       if page_part:find( page_part_identifier ) == 1 then
         local page_part_name = page_part:sub( page_part_identifier:len() + 1 )
-        print( whitespace:rep( level * 2 )..'-'..page_part_name )
+        if not silent then print( whitespace:rep( level * 2 )..'-'..page_part_name ) end
         local rendered_page_parts = {}
         rendered_page_parts[page_part_name] = pashlicks.render( pashlicks.load_file( source..'/'..page_part ), pashlicks.copy( context ) )
       end
@@ -144,7 +145,7 @@ function pashlicks.render_tree( source, destination, level, context )
 
     table.insert( tree, { title = after_context.page.title, path = source..'/'..file, file = file, layout = after_context.page.layout, hidden = after_context.page.hidden } )
 
-    outfile:write( output )
+    if not silent then outfile:write( output ) end
     outfile:close()
   end
 
@@ -179,6 +180,9 @@ else
   if type( destination_attr ) ~= 'table' or destination_attr.mode ~= 'directory' then
     print( '<destination> needs to be an existing directory' )
   else
+    local site_tree = pashlicks.render_tree( '.', pashlicks.destination, 0, pashlicks.context, true )
+    pashlicks.context.site = pashlicks.context.site or {}
+    pashlicks.context.site.tree = site_tree
     pashlicks.render_tree( '.', pashlicks.destination, 0, pashlicks.context )
   end
 end
