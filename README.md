@@ -111,5 +111,5 @@ site all files have these values and functions available in their environment.
 Calling Pashlicks should be as simple as :
 
 ``` bash
-lua pashlicks.lau _output
+lua pashlicks.lua _output
 ```
