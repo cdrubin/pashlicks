@@ -82,7 +82,6 @@ function pashlicks.render_tree( source, destination, level, context )
   -- create tables of the file and directory names
   for item in lfs.dir( source ) do
     local attr = lfs.attributes( source..'/'..item )
-    --print ( inspect( attr ) )
     if item:sub( 1, 1 ) ~= '_' and item:sub( 1, 1 ) ~= '.' and item ~= arg[0] then
       if attr.mode == "directory" then
         table.insert( directories, item )
@@ -93,7 +92,7 @@ function pashlicks.render_tree( source, destination, level, context )
   end
   table.sort( directories ) ; table.sort( files )
 
-  local visible = {}
+  local tree = {}
 
   -- process directories first for depth-first search
   for count, directory in ipairs( directories ) do
@@ -102,12 +101,10 @@ function pashlicks.render_tree( source, destination, level, context )
     if ( destination_attr == nil ) then
       lfs.mkdir( destination..'/'..directory )
     end
-    local visible_pages = pashlicks.render_tree( source..'/'..directory, destination..'/'..directory, level + 1, pashlicks.copy( context ) )
+    local subtree = pashlicks.render_tree( source..'/'..directory, destination..'/'..directory, level + 1, pashlicks.copy( context ) )
 
-    -- add visible_pages to visible_directories if the returned visible_pages contains index.html
-    for _, page in ipairs( visible_pages ) do
-      if page.file and page.file == 'index.html' then visible[directory] = visible_pages ; break end
-    end
+    tree[directory] = subtree
+
 
   end
 
@@ -121,7 +118,7 @@ function pashlicks.render_tree( source, destination, level, context )
     context.page.level = level
     context.page.path = source..'/'..file
     context.page.file = file
-    context.page.tree = visible
+    context.page.tree = tree
 
     -- check for (and render) page parts
     local rendered_page_parts = {}
@@ -146,15 +143,13 @@ function pashlicks.render_tree( source, destination, level, context )
       output = pashlicks.render( pashlicks.load_file( after_context.page.layout ), after_context )
     end
 
-    if ( not after_context.page.hidden ) then
-      table.insert( visible, { title = after_context.page.title, path = source..'/'..file, file = file, layout = after_context.page.layout } )
-    end
+    table.insert( tree, { title = after_context.page.title, path = source..'/'..file, file = file, layout = after_context.page.layout, hidden = after_context.page.hidden } )
 
     outfile:write( output )
     outfile:close()
   end
 
-  return visible
+  return tree
 
 end
 
@@ -186,6 +181,7 @@ else
     print( '<destination> needs to be an existing directory' )
   else
     pashlicks.render_tree( '.', pashlicks.destination, 0, pashlicks.context )
+    --print( inspect( pashlicks.render_tree( '.', pashlicks.destination, 0, pashlicks.context ) ) )
   end
 end
 

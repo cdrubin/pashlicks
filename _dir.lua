@@ -13,7 +13,10 @@ page = {
 
 -- global functions
 
-function subpaths( tree, from, filter )
+-- requires page.tree as first parameter, optionally accepts a relative path
+-- into the tree, filter can be optionally 'directory' or 'file' and if
+-- include_hidden is true then all items are returned including hidden ones
+function subpaths( tree, from, filter, include_hidden )
   from = from or ''
   local results = {}
 
@@ -31,16 +34,24 @@ function subpaths( tree, from, filter )
   for i, item in pairs( subtree ) do
     if item.file and ( not filter or filter == 'file' ) and from:trim() ~= '' then
       item.type = 'file'
-      table.insert( results, { subpath = item.file, type = 'file', title = item.title } )
-    else
-      -- TODO: find index.html inside that item
+      if not item.hidden or include_hidden then
+        table.insert( results, { subpath = item.file, type = 'file', title = item.title } )
+      end
+    elseif ( not filter or filter == 'directory' ) then
+
       local title = ''
       for _, subitem in pairs( item ) do
-        if ( subitem.file == 'index.html' ) then
-          title = subitem.title ; break
+        if subitem.file == 'index.html' then
+          if not subitem.hidden or include_hidden then
+            title = subitem.title
+          else
+            title = nil
+          end
+          break
         end
       end
-      table.insert( results, { subpath = i, type = 'directory', title = title } )
+      if title then table.insert( results, { subpath = i, type = 'directory', title = title } ) end
+
     end
   end
 
