@@ -104,6 +104,8 @@ Pashlicks loves her sisters Josie and Marmite
 
 ```
 
+An example of some customization is available in the included _dir.lua. Since this is placed in the root of 
+site all files have these values and functions available in their environment.
 
 
 Calling Pashlicks should be as simple as :
