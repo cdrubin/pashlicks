@@ -3,7 +3,7 @@
 --   templating features thanks to Zed Shaw's tir
 
 local lfs = require( 'lfs' )
-local inspect = require( '_inspect' )
+--local inspect = require( '_inspect' )
 
 pashlicks = { context = {} }
 setmetatable( pashlicks.context, { __index = _G } )
@@ -185,7 +185,7 @@ else
   if type( destination_attr ) ~= 'table' or destination_attr.mode ~= 'directory' then
     print( '<destination> needs to be an existing directory' )
   else
-    print( inspect( pashlicks.render_tree( '.', pashlicks.destination, 0, pashlicks.context ) ) )
+    pashlicks.render_tree( '.', pashlicks.destination, 0, pashlicks.context )
   end
 end
 
