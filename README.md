@@ -107,6 +107,16 @@ Pashlicks loves her sisters Josie and Marmite
 An example of some customization is available in the included _dir.lua. Since this is placed in the root of 
 site all files have these values and functions available in their environment.
 
+Every page has some variables injected into its environment:
+
+```lua
+page.file     -- filename of file being processed
+page.path     -- path to file from root of site
+page.level    -- level in the tree at which this page sits
+page.tree     -- subtree from this page    
+
+site.tree     -- tree of site
+```
 
 Calling Pashlicks should be as simple as :
 
