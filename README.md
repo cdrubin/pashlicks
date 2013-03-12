@@ -106,8 +106,8 @@ Pashlicks loves her sisters Josie and Marmite
 
 An example of some customization is available in the included 
 [_dir.lua](https://github.com/cdrubin/pashlicks/blob/master/_dir.lua). 
-When this file is placed at the root of site Pashlicks makes sure that
-all files have these values and functions available in their environment.
+When this file is placed at the root of the site Pashlicks makes sure that
+all pages have these values and functions available in their environment.
 
 Every page has some *special* variables injected into its environment:
 
