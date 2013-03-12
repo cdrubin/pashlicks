@@ -7,7 +7,6 @@ local lfs = require( 'lfs' )
 pashlicks = { context = {} }
 setmetatable( pashlicks.context, { __index = _G } )
 
-
 pashlicks.TEMPLATE_ACTIONS = {
   ['{%'] = function(code)
     return code
@@ -29,13 +28,15 @@ function pashlicks.render( code, context )
     local act = pashlicks.TEMPLATE_ACTIONS[block:sub( 1, 2 )]
     local output = text
 
+    --print( text )
+
     if act then
-      code[#code+1] = '_result[#_result+1] = [[' .. text .. ']]'
+      code[#code+1] = '_result[#_result+1] = [=[' .. text .. ']=]'
       code[#code+1] = act(block:sub(3,-3))
     elseif #block > 2 then
-      code[#code+1] = '_result[#_result+1] = [[' .. text .. block .. ']]'
+      code[#code+1] = '_result[#_result+1] = [=[' .. text .. block .. ']=]'
     else
-      code[#code+1] = '_result[#_result+1] = [[' .. text .. ']]'
+      code[#code+1] = '_result[#_result+1] = [=[' .. text .. ']=]'
     end
   end
 
@@ -134,7 +135,8 @@ function pashlicks.render_tree( source, destination, level, context, silent )
     context.page.parts = rendered_page_parts
 
     -- render and write out page
-    local outfile = io.open( destination..'/'..file, "w" )
+    local outfile
+    if not silent then outfile = io.open( destination..'/'..file, "w" ) end
     local output, after_context = pashlicks.render( pashlicks.load_file( source..'/'..file ), pashlicks.copy( context ) )
 
     -- embed in a layout if one was specified
@@ -146,7 +148,7 @@ function pashlicks.render_tree( source, destination, level, context, silent )
     table.insert( tree, { title = after_context.page.title, path = source..'/'..file, file = file, layout = after_context.page.layout, hidden = after_context.page.hidden } )
 
     if not silent then outfile:write( output ) end
-    outfile:close()
+    if not silent then outfile:close() end
   end
 
   return tree
