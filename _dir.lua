@@ -1,4 +1,3 @@
-
 -- tables for the environment in which pages are rendered
 
 site = {
@@ -13,8 +12,8 @@ page = {
 
 -- global functions
 
--- requires page.tree as first parameter, optionally accepts a relative path
--- into the tree, filter can be optionally 'directory' or 'file' and if
+-- requires page.tree or site.tree as first parameter, optionally accepts a relative path
+-- into that tree, filter can be optionally 'directory' or 'file' and if
 -- include_hidden is true then all items are returned including hidden ones
 function subpaths( tree, from, filter, include_hidden )
   from = from or ''
