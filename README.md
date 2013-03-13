@@ -39,19 +39,14 @@ a particular layout. Specifying the layout template can of course
 also be done inside the page itself.
 
 ```lua
---- if page table already exists
 page.layout = '_layouts/site.html'
+site.keywords = 'Dog-run'
 ```
-be careful when doing something like the following :
+avoid doing something like the following :
 ```lua
 page = { layout = '_layouts/site.html' }
 ```
-because you might be clobbering the page table created elsewhere.
-Something like this might be more appropriate :
-```lua
-page = page or {}
-page.layout = '_layouts/site.html'
-```
+because you will be clobbering the page table contents created elsewhere.
 
 When specifying a layout the page is rendered to the variable `page.content`.
 
