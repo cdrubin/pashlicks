@@ -5,7 +5,12 @@
 local lfs = require( 'lfs' )
 
 pashlicks = { context = {} }
+
+pashlicks.inspect = require( '_lib/inspect' )
+--require( '_lib/extensions' )
+
 setmetatable( pashlicks.context, { __index = _G } )
+
 
 pashlicks.TEMPLATE_ACTIONS = {
   ['{%'] = function(code)
@@ -15,7 +20,7 @@ pashlicks.TEMPLATE_ACTIONS = {
     return ('_result[#_result+1] = %s'):format(code)
   end,
   ['{('] = function(code)
-    return ( '_result[#_result+1] = pashlicks.render( pashlicks.load_file( %s ), _ENV )'):format( code )
+    return ( '_result[#_result+1] = pashlicks.render( pashlicks.read_file( %s ), _ENV )'):format( code )
   end
 }
 
@@ -31,17 +36,19 @@ function pashlicks.render( code, context )
     --print( text )
 
     if act then
-      code[#code+1] = '_result[#_result+1] = [=[' .. text .. ']=]'
+      code[#code+1] = '_result[#_result+1] = [=====[' .. text .. ']=====]'
       code[#code+1] = act(block:sub(3,-3))
     elseif #block > 2 then
-      code[#code+1] = '_result[#_result+1] = [=[' .. text .. block .. ']=]'
+      code[#code+1] = '_result[#_result+1] = [=====[' .. text .. block .. ']=====]'
     else
-      code[#code+1] = '_result[#_result+1] = [=[' .. text .. ']=]'
+      code[#code+1] = '_result[#_result+1] = [=====[' .. text .. ']=====]'
     end
   end
 
   code[#code+1] = 'return table.concat(_result)'
   code = table.concat( code, '\n' )
+
+  --print( code )
 
   return pashlicks.run_code( code, context )
 end
@@ -59,13 +66,17 @@ function pashlicks.run_code( code, context )
 end
 
 
-function pashlicks.load_file( name )
+function pashlicks.read_file( name )
   local infile = assert( io.open( name, 'r' ) )
   local content = infile:read( '*a' )
   infile:close()
   return content
 end
 
+-- global loadfile uses global environment by default, this one uses the current environment
+function pashlicks.run_file( name, context )
+  return pashlicks.run_code( pashlicks.read_file( name ), context )
+end
 
 -- silent will not write files or print anything
 function pashlicks.render_tree( source, destination, level, context, silent )
@@ -78,7 +89,7 @@ function pashlicks.render_tree( source, destination, level, context, silent )
 
   -- check for 'subdir/_dir.lua' and add to context if it exists
   file = io.open( source..'/_dir.lua', 'r' )
-  if file then _, context = pashlicks.run_code( pashlicks.load_file( source..'/_dir.lua' ), context ) end
+  if file then _, context = pashlicks.run_code( pashlicks.read_file( source..'/_dir.lua' ), context ) end
 
   -- create tables of the file and directory names
   for item in lfs.dir( source ) do
@@ -97,7 +108,7 @@ function pashlicks.render_tree( source, destination, level, context, silent )
 
   -- process directories first for depth-first search
   for count, directory in ipairs( directories ) do
-    print( whitespace:rep( level * 2 )..directory..'/' )
+    if not silent then print( whitespace:rep( level * 2 )..directory..'/' ) end
     destination_attr = lfs.attributes( destination..'/'..directory )
     if ( destination_attr == nil and not silent ) then
       lfs.mkdir( destination..'/'..directory )
@@ -112,7 +123,6 @@ function pashlicks.render_tree( source, destination, level, context, silent )
   --local visible_pages = {}
   -- process files now that search has already processed any children
   for count, file in ipairs( files ) do
-    if not silent then print( whitespace:rep( level * 2 )..file ) end
 
     -- setup file specific page values
     context.page = context.page or {}
@@ -129,7 +139,7 @@ function pashlicks.render_tree( source, destination, level, context, silent )
         local page_part_name = page_part:sub( page_part_identifier:len() + 1 )
         if not silent then print( whitespace:rep( level * 2 )..'-'..page_part_name ) end
         local rendered_page_parts = {}
-        rendered_page_parts[page_part_name] = pashlicks.render( pashlicks.load_file( source..'/'..page_part ), pashlicks.copy( context ) )
+        rendered_page_parts[page_part_name] = pashlicks.render( pashlicks.read_file( source..'/'..page_part ), pashlicks.copy( context ) )
       end
     end
     context.page.parts = rendered_page_parts
@@ -137,12 +147,15 @@ function pashlicks.render_tree( source, destination, level, context, silent )
     -- render and write out page
     local outfile
     if not silent then outfile = io.open( destination..'/'..file, "w" ) end
-    local output, after_context = pashlicks.render( pashlicks.load_file( source..'/'..file ), pashlicks.copy( context ) )
+    local output, after_context = pashlicks.render( pashlicks.read_file( source..'/'..file ), pashlicks.copy( context ) )
 
     -- embed in a layout if one was specified
     if after_context.page.layout then
       after_context.page.content = output
-      output = pashlicks.render( pashlicks.load_file( after_context.page.layout ), after_context )
+      output = pashlicks.render( pashlicks.read_file( after_context.page.layout ), after_context )
+      if not silent then print( whitespace:rep( level * 2 )..file..' ('..after_context.page.layout..')' ) end
+    else
+      if not silent then print( whitespace:rep( level * 2 )..file ) end
     end
 
     table.insert( tree, { title = after_context.page.title, path = source..'/'..file, file = file, layout = after_context.page.layout, hidden = after_context.page.hidden } )
@@ -182,9 +195,13 @@ else
   if type( destination_attr ) ~= 'table' or destination_attr.mode ~= 'directory' then
     print( '<destination> needs to be an existing directory' )
   else
+    -- stand-in for the tree for the first pass of render (as the tree is generated in this initial pass)
+    pashlicks.context.site = { tree = {} }
+    pashlicks.context.page = {}
     local site_tree = pashlicks.render_tree( '.', pashlicks.destination, 0, pashlicks.context, true )
-    pashlicks.context.site = pashlicks.context.site or {}
     pashlicks.context.site.tree = site_tree
+    print( pashlicks.inspect( site_tree ) )
+    --exit()
     pashlicks.render_tree( '.', pashlicks.destination, 0, pashlicks.context )
   end
 end
