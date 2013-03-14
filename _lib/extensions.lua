@@ -1,10 +1,10 @@
 
--- requires page.tree as first parameter, optionally accepts a relative path
+-- requires page or site tree as first parameter, optionally accepts a relative path
 -- into the tree, filter can be optionally 'directory' or 'file' and if
 -- include_hidden is true then all items are returned including hidden ones
 function pashlicks.subpaths( tree, from, filter, include_hidden )
   assert( type( tree ) == 'table', 'tree parameter should be either page.tree or site.tree' )
-  from = from or ''
+  from = from:trim() or ''
   local results = {}
 
   if from:ends( '/' ) then
@@ -19,14 +19,18 @@ function pashlicks.subpaths( tree, from, filter, include_hidden )
   end
 
   for i, item in pairs( subtree ) do
-    if item.file and ( not filter or filter == 'file' ) and from:trim() ~= '' then
+    if item.file and ( not filter or filter == 'file' ) and from ~= '' then
       item.type = 'file'
       if not item.hidden or include_hidden then
-        table.insert( results, { subpath = item.file, type = 'file', title = item.title } )
+        if from == '' then
+          table.insert( results, { subpath = from..item.file, type = 'file', title = item.title, name = item.file } )
+        else
+          table.insert( results, { subpath = from..'/'..item.file, type = 'file', title = item.title, name = item.file } )
+        end
       end
     elseif ( not filter or filter == 'directory' ) then
 
-      local title = ''
+      local title = nil
       for _, subitem in pairs( item ) do
         if subitem.file == 'index.html' then
           if not subitem.hidden or include_hidden then
@@ -37,7 +41,14 @@ function pashlicks.subpaths( tree, from, filter, include_hidden )
           break
         end
       end
-      if title then table.insert( results, { subpath = i, type = 'directory', title = title } ) end
+
+      if title then
+        if from == '' then
+          table.insert( results, { subpath = from..i, type = 'directory', title = title, name = i } )
+        else
+          table.insert( results, { subpath = from..'/'..i, type = 'directory', title = title, name = i } )
+        end
+      end
 
     end
   end
@@ -45,15 +56,6 @@ function pashlicks.subpaths( tree, from, filter, include_hidden )
   return results
 end
 
-
-function site.subpaths( from, filter, include_hidden )
-  return pashlicks.subpaths( site.tree, from, filter, include_hidden )
-end
-
-
-function page.subpaths( from, filter, include_hidden )
-  return pashlicks.subpaths( page.tree, from, filter, include_hidden )
-end
 
 
 -- string convenience methods
